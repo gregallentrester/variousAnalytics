@@ -1,0 +1,109 @@
+
+In a multi-threaded environment - and especially when adopting Log4j2's Async
+Logging feature - contextual meta-information can be leveraged to untangle the
+interleaved logging statements which arise from async's multithreaded logging
+functionality.
+
+This is especially applicable when using thread pools.
+
+
+This contextual metadata can be used in conjunction with tools like Splunk to
+transform enmeshed logging statements into something resembling a time-series
+journal.
+
+
+There are two classes in Log4j2 which provide this contextualization:
+
+  The NDC class (stack-based)
+  The MDC class (map-based)
+
+
+
+NDC
+The NDC class uses a Threadlocal Stack, along with the %x option of an appender's
+PatternLayout.
+
+Use any execution context that is deemed necessary.
+Utilize the push/pop concept.
+
+Leverage the %x option of an appender's PatternLayout configuration to publish
+any contextual meta-informatiion that you choose.
+
+
+MDC
+The MDC class uses a Threadlocal Map to accomplish the same thing.
+
+
+
+
+^^^
+src/main/resources/log4j2.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="PID">%5X{pid}</Property>
+        <Property name="LOG_EXCEPTION_CONVERSION_WORD">%xEx</Property>
+        <Property name="LOG_LEVEL_PATTERN">%5p</Property>
+        <Property name="LOG_PATTERN">%style{%d{yyyy-MM-dd HH:mm:ss.SSS}}{dim} %highlight{${LOG_LEVEL_PATTERN}} %style{${sys:PID}}{magenta} %style{---}{dim} %style{[%15.15t]}{dim} %style{%-40.40c{1.}}{cyan} %style{%22.22M}{magenta} %style{:}{faint} %m%n${sys:LOG_EXCEPTION_CONVERSION_WORD}</Property>
+    </Properties>
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="${LOG_PATTERN}" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <logger name="com.github.daggerok" level="ALL" additivity="false">
+            <appender-ref ref="ConsoleAppender"/>
+        </logger>
+        <Root level="ALL">
+            <AppenderRef ref="ConsoleAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>
+
+for me next configurations are working well (without includeLocation="true" option enabled):
+
+src/main/resources/log4j2.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="PID">%5X{pid}</Property>
+        <Property name="LOG_EXCEPTION_CONVERSION_WORD">%xEx</Property>
+        <Property name="LOG_LEVEL_PATTERN">%5p</Property>
+        <Property name="LOG_PATTERN">%style{%d{yyyy-MM-dd HH:mm:ss.SSS}}{dim} %highlight{${LOG_LEVEL_PATTERN}} %style{${sys:PID}}{magenta} %style{---}{dim} %style{[%15.15t]}{dim} %style{%-40.40c{1.}}{cyan} %style{%22.22M}{magenta} %style{:}{faint} %m%n${sys:LOG_EXCEPTION_CONVERSION_WORD}</Property>
+    </Properties>
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="${LOG_PATTERN}" />
+        </Console>
+    </Appenders>
+    <Loggers>
+        <logger name="com.github.daggerok" level="ALL" additivity="false">
+            <appender-ref ref="ConsoleAppender"/>
+        </logger>
+        <Root level="ALL">
+            <AppenderRef ref="ConsoleAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>
+build.gradle
+
+
+build.gradle
+dependencies {
+    implementation(platform('org.apache.logging.log4j:log4j-bom:2.12.1'))
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+    // ...
+}
+
+
+StackWalker (Java 9)
+https://stackoverflow.com/questions/36542487/why-log4j-2-does-not-log-method-name-for-app-and-unit-tests
+https://bit.ly/3AyKxxs
+
+
+
+^^^
